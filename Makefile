@@ -1,5 +1,9 @@
 .PHONY: setup up destroy clean test
 
+# Global Variables
+PROVIDER := "vmware_desktop"
+VAGRANT_FILE := "vagrantfiles/nginx"
+
 # Customizing your output ------------------------------------------------
 CODE_CHANGE   = "\\033["
 WARNING      := $(shell echo ${CODE_CHANGE}'33;5m')
@@ -26,18 +30,41 @@ setup: check_vagrant
 	@echo "3: brew install --cask vagrant-vmware-utility"
 	@echo "4: vagrant plugin install vagrant-vmware-desktop"
 
+# Startup the VMs -------------------------------------------------------------
 up: check_vagrant
 	@echo "${RUNNING}"
-	@(cd vagrantfiles/nginx && vagrant up --provider vmware_desktop)
+	@(cd ${VAGRANT_FILE} && vagrant up --provider ${PROVIDER})
+start: up
+run: up
 
+# Shutdown the VMs ------------------------------------------------------------
+halt: check_vagrant
+	@echo "${RUNNING}"
+	@(cd ${VAGRANT_FILE} && vagrant halt)
+stop: halt
+shutdown: halt
+down: halt
+
+# Restart the VMs -------------------------------------------------------------
+reload: check_vagrant
+	@echo "${BOLD_WARNING}"
+	@(cd ${VAGRANT_FILE} && vagrant reload)
+restart: reload
+reboot: reload
+
+# Destroy the VMs -------------------------------------------------------------
 destroy: check_vagrant
 	@echo "${BOLD_WARNING}"
-	@(cd vagrantfiles/nginx && vagrant destroy)
+	@(cd ${VAGRANT_FILE} && vagrant destroy)
+remove: destroy
 
+# Clean the build folder ------------------------------------------------------
 clean: check_vagrant
 	@echo "${BOLD_WARNING}"
-	@(cd vagrantfiles/nginx && vagrant destroy -f)
-	@find . -type d -name ".vagrant" -exec rm -rf {} \;
+	@(cd ${VAGRANT_FILE} && vagrant destroy -f)
+	@find . -type d -name ".vagrant" -exec rm -rf {} \; > /dev/null 2>&1
+delete: clean
 
+# Ansible stuffs --------------------------------------------------------------
 test: check_ansible
 	ansible all -m ping -o
