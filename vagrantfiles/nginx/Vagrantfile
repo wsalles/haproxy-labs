@@ -1,0 +1,41 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+# Box metadata
+BOX_NAME    = "starboard/ubuntu-arm64-20.04.5" # ARM64 Box for Apple M1/M2 users
+BOX_VERSION = "20221120.20.40.0"
+
+# Define hostname prefix
+HOSTNAME_PREFIX = "ubuntu-nginx"
+
+# UI object for printing information
+ui = Vagrant::UI::Prefixed.new(Vagrant::UI::Colored.new, "vagrant")
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  (1..3).each do |i|
+    ui.info "Creating VM: #{HOSTNAME_PREFIX}-#{i}"
+    config.vm.define "#{HOSTNAME_PREFIX}-#{i}" do |nginx|
+      nginx.vm.box = BOX_NAME
+      nginx.vm.box_download_insecure = true
+      nginx.vm.hostname = "#{HOSTNAME_PREFIX}-#{i}"
+      nginx.vm.network "private_network", ip: "172.16.47.10#{i}"
+      nginx.ssh.insert_key = false
+      nginx.ssh.private_key_path = ['~/.vagrant.d/insecure_private_key', '~/.ssh/id_rsa']
+      nginx.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~/.ssh/authorized_keys"
+      nginx.vm.provision "shell", path: "nginx.sh"
+      nginx.vm.provider "vmware_desktop" do |v|
+        v.gui = true
+        v.ssh_info_public = true
+        v.allowlist_verified = true
+        v.linked_clone = false
+        v.memory = 512
+        v.cpus = 1
+        v.vmx["ethernet0.pcislotnumber"] = "160"
+      end
+      nginx.vm.provision "shell", inline: "echo 'INSTALLER: Installation complete and ready to use!'"
+    end
+  end
+end
