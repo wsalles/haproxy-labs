@@ -3,3 +3,6 @@
 
 # Vagrant builds
 .vagrant
+
+# Logs
+*.log
