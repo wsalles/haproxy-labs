@@ -1,0 +1,46 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+# Box metadata
+BOX_NAME    = "starboard/ubuntu-arm64-20.04.5" # ARM64 Box for Apple M1/M2 users
+BOX_VERSION = "20221120.20.40.0"
+
+# Node metadata
+nodes = {
+  numbers: 3,
+  hostname_prefix: "ubuntu-nginx-",
+  cpu: 1,
+  mem: 512,
+  src_code: ".",
+}
+
+# UI object for printing information
+ui = Vagrant::UI::Prefixed.new(Vagrant::UI::Colored.new, "vagrant")
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  (1..nodes[:numbers]).each do |i|
+    ui.info "Creating VM: #{"#{nodes[:hostname_prefix]}#{i}"}"
+    config.vm.define "#{nodes[:hostname_prefix]}#{i}" do |nginx|
+      nginx.vm.box = BOX_NAME
+      nginx.vm.box_download_insecure = true
+      nginx.vm.hostname = "#{nodes[:hostname_prefix]}#{i}"
+      nginx.vm.network :private_network, ip: "172.10.10.10#{i}"
+      nginx.ssh.insert_key = false
+      nginx.ssh.private_key_path = ['~/.vagrant.d/insecure_private_key', '~/.ssh/id_rsa']
+      nginx.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~/.ssh/authorized_keys"
+      nginx.vm.provision "shell", path: "#{nodes[:src_code]}/install.sh"
+      nginx.vm.provider "vmware_desktop" do |v|
+        v.gui = false
+        v.ssh_info_public = true
+        v.allowlist_verified = true
+        v.linked_clone = false
+        v.memory = "#{nodes[:mem]}"
+        v.cpus = "#{nodes[:cpu]}"
+      end
+      nginx.vm.provision "shell", inline: "echo '[NGINX] INSTALLER: Installation complete and ready to use!'"
+    end
+  end
+end

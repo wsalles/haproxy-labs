@@ -3,17 +3,81 @@ A simple project to create an architecture with High Availability.
 
 ---
 
-## Requirements
+# Requirements
 
 - [VirtualBox v7](https://www.virtualbox.org/wiki/Downloads) *(**not recommended** for M1/M2 users)*
 - [VMware Fusion Player v13](https://customerconnect.vmware.com/en/evalcenter?p=fusion-player-personal-13) *(**recommended** for M1/M2 users)*
 - [Vagrant v2.3.6](https://developer.hashicorp.com/vagrant/downloads?product_intent=vagrant)
 - [Wireshark](https://www.wireshark.org/download.html)
 
+---
 
-## Getting Started
+# Getting Started
 
-### How to setup the Virtual Machines
+## How does HA Proxy work?
+
+[**HAProxy**](https://www.haproxy.org/) is a free, very fast and reliable Reverse-Proxy offering High Availability, Load Balancing, and proxying for TCP and HTTP-based applications.
+
+**HAProxy** has load balancing algorithms, below I will talk a little bit about them. So, you can define many strategies to balance your workload:
+
+- **[Round-robin](https://en.wikipedia.org/wiki/Round-robin_scheduling)** has no validation, it just sends the same requests to each server. Perfect for stateless application. Simple to manage:
+  ```
+  ...
+  backend back-nginxes
+    balance roundrobin
+    server nginx1 172.10.10.101:80
+    server nginx2 172.10.10.102:80
+    server nginx3 172.10.10.103:80
+  ```
+- **Weight Robin:** As the name says, it's the weighted Round-robin. The node that has more weight will receive more requests.
+  ```
+  ...
+  backend back-nginxes
+    balance roundrobin
+    server nginx1 172.10.10.101:80 weight 3
+    server nginx2 172.10.10.102:80 weight 2
+    server nginx3 172.10.10.103:80 weight 1
+  ```
+- **Least Connection**: Most used for long-term Layer 4 (TCP) communication, for example, a database connection.
+  ```
+  ...
+  backend back-nginxes
+    balance leastconn
+    server nginx1 172.10.10.101:80
+    server nginx2 172.10.10.102:80
+    server nginx3 172.10.10.103:80
+  ```
+
+  - with weight:
+    ```
+    ...
+    backend back-nginxes
+      balance roundrobin
+      server nginx1 172.10.10.101:80 weight 5
+      server nginx2 172.10.10.102:80 weight 3
+      server nginx3 172.10.10.103:80 weight 1
+    ```
+- **Hash URI**: Ideal for load balancing caching servers such as Squid.
+  ```
+  ...
+  backend back-nginxes
+    balance uri
+    server nginx1 172.10.10.101:80
+    server nginx2 172.10.10.102:80
+    server nginx3 172.10.10.103:80
+  ```
+- **First Available**: Not very interesting, but it makes the list. Basically, you can define a maximum number of connections (maxconn) for the first server and when it overflows, the requests would be directed to the others.
+  ```
+  ...
+  backend back-nginxes
+    balance first
+    server nginx1 172.10.10.101:80 maxconn 2
+    server nginx2 172.10.10.102:80 maxconn 2
+    server nginx3 172.10.10.103:80 maxconn 5
+  ```
+
+---
+## How to setup the Virtual Machines
 
 1. First of all, choose your favorite provider according to the recommendation above.
 1. If the choice was VirtualBox, you need to make sure that you have a **private network** on VirtualBox. For that, just do:
@@ -41,7 +105,46 @@ A simple project to create an architecture with High Availability.
    ```shell
    > make test
    ansible all -m ping -o
-   172.16.47.101 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
-   172.16.47.103 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
-   172.16.47.102 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
+   172.10.10.103 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
+   172.10.10.102 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
+   172.10.10.101 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
+   172.10.10.201 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
+   172.10.10.202 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
    ```
+
+---
+
+## How to setup HA Proxy
+
+You can customize your [**haproxy.cfg**](vagrantfiles/haproxy/haproxy.cfg) using filtering rules, redirection, etc.
+
+Let's see some examples below.
+
+### ACL
+
+You can check the [ACL documentation](https://cbonte.github.io/haproxy-dconv/2.3/configuration.html#7) written by HAProxy team.
+
+#### List with some Use Cases
+
+- PATH
+
+  | Line | Explanation |
+  | ---- | ----------- |
+  | `acl is_post_jan path -i /posts/janeiro/15` | Compare if the full `path` is `/posts/janeiro/15` |
+  | `acl is_post path_beg -i /posts` | Compare if the starting path is `/posts` |
+  | `acl is_post_subdir path_dir -i /posts` | Compare if it is a subdirectory of path with `/something/posts/january` |
+  | `acl is_image path_end -i .jpg .png` | Compare if the path ends with `/blabla.jpg` |
+  | `acl is_4_digit path_len 4` | If the number of digits in the path is equal to 4 |
+  | `acl is_gt_4 path_len gt 4` | If the number of difits in the path is greater than 4 |
+  | `acl is_image_regex pathreg (png|jpg|jpeg|gif)$` | Just using RegEx |
+  | `acl is_substring path_sub -i posts` | If contains a string as `posts` |
+
+---
+
+# Troubleshooting & Tip Sessions
+
+1. If you are not using Apple M1/M2, you need to change to another AMD64 BOX for example.
+   1. You can use [Vagrant Cloud](https://app.vagrantup.com/boxes/search) to search the boxes according to your provider (vmware, virtualbox, etc).
+1. DHCP:
+   1. To release the current IP address: `dhclient -r`
+   1. To obtain a fresh lease: `dhclient`

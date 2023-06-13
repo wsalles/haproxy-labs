@@ -2,7 +2,7 @@
 
 # Global Variables
 PROVIDER := "vmware_desktop"
-VAGRANT_FILE := "."
+VAGRANTFILE_PATH := "vagrantfiles"
 
 # Customizing your output ------------------------------------------------
 CODE_CHANGE   = "\\033["
@@ -13,7 +13,7 @@ SETUP        := $(shell echo ${CODE_CHANGE}'36;4m')
 NC           := $(shell echo ${CODE_CHANGE}'0m')
 
 # Targets ----------------------------------------------------------------
-check_%:
+check-%:
 	$(eval REQ := $(shell which $* ))
 	@if [ "${REQ}" = "" ]; then \
 		echo "${WARNING}Please, consider doing: \n${BOLD_WARNING}make setup \n \
@@ -21,7 +21,7 @@ check_%:
 		exit 1; \
 	 fi ||:
 
-setup: check_vagrant
+setup: check-vagrant
 	@echo "${WARNING}"
 	@echo "*** Vagrant and VMWare Fusion 13 Player on Apple M1 Pro ***"
 	@echo "You can manually run the commands below:"
@@ -31,39 +31,30 @@ setup: check_vagrant
 	@echo "4: vagrant plugin install vagrant-vmware-desktop"
 
 # Startup the VMs -------------------------------------------------------------
-up: check_vagrant
+up-%: check-vagrant
 	@echo "${RUNNING}"
-	@(cd ${VAGRANT_FILE} && vagrant up --provider ${PROVIDER})
-start: up
-run: up
+	@(cd ${VAGRANTFILE_PATH}/$* && vagrant up --provider ${PROVIDER})
 
 # Shutdown the VMs ------------------------------------------------------------
-halt: check_vagrant
+halt-%: check-vagrant
 	@echo "${RUNNING}"
-	@(cd ${VAGRANT_FILE} && vagrant halt)
-stop: halt
-shutdown: halt
-down: halt
+	@(cd ${VAGRANTFILE_PATH}/$* && vagrant halt)
 
 # Restart the VMs -------------------------------------------------------------
-reload: check_vagrant
+reload-%: check-vagrant
 	@echo "${BOLD_WARNING}"
-	@(cd ${VAGRANT_FILE} && vagrant reload)
-restart: reload
-reboot: reload
+	@(cd ${VAGRANTFILE_PATH}/$* && vagrant reload)
 
 # Destroy the VMs -------------------------------------------------------------
-destroy: check_vagrant
+destroy-%: check-vagrant
 	@echo "${BOLD_WARNING}"
-	@(cd ${VAGRANT_FILE} && vagrant destroy)
-remove: destroy
+	@(cd ${VAGRANTFILE_PATH}/$* && vagrant destroy)
 
 # Clean the build folder ------------------------------------------------------
-clean: check_vagrant
+clean-%: check-vagrant
 	@echo "${BOLD_WARNING}"
-	@(cd ${VAGRANT_FILE} && vagrant destroy -f)
-delete: clean
+	@(cd ${VAGRANTFILE_PATH}/$* && vagrant destroy -f)
 
 # Ansible stuffs --------------------------------------------------------------
-test: check_ansible
+test: check-ansible
 	ansible all -m ping -o
