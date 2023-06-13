@@ -2,7 +2,7 @@
 
 # Global Variables
 PROVIDER := "vmware_desktop"
-VAGRANT_FILE := "vagrantfiles/nginx"
+VAGRANT_FILE := "."
 
 # Customizing your output ------------------------------------------------
 CODE_CHANGE   = "\\033["
@@ -62,7 +62,6 @@ remove: destroy
 clean: check_vagrant
 	@echo "${BOLD_WARNING}"
 	@(cd ${VAGRANT_FILE} && vagrant destroy -f)
-	@find . -type d -name ".vagrant" -exec rm -rf {} \; > /dev/null 2>&1
 delete: clean
 
 # Ansible stuffs --------------------------------------------------------------
