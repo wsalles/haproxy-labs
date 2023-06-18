@@ -21,7 +21,7 @@ ui = Vagrant::UI::Prefixed.new(Vagrant::UI::Colored.new, "vagrant")
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (1..nodes[:numbers]).each do |i|
-    ui.info "Creating VM: #{"#{nodes[:hostname_prefix]}#{i}"}"
+    ui.info "Running Vagrant on the virtual machine: #{"#{nodes[:hostname_prefix]}#{i}"}"
     config.vm.define "#{nodes[:hostname_prefix]}#{i}" do |haproxy|
       haproxy.vm.box = BOX_NAME
       haproxy.vm.box_download_insecure = true
