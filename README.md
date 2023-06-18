@@ -1,7 +1,10 @@
 # haproxy-labs
+
 A simple project to create an architecture with High Availability.
 
 ---
+
+![ha-proxy](https://www.haproxy.org/img/HAProxyCommunityEdition_60px.png)
 
 # Requirements
 
@@ -17,6 +20,26 @@ A simple project to create an architecture with High Availability.
 ## How does HA Proxy work?
 
 [**HAProxy**](https://www.haproxy.org/) is a free, very fast and reliable Reverse-Proxy offering High Availability, Load Balancing, and proxying for TCP and HTTP-based applications.
+
+---
+
+### Diagram
+
+| ![ha-proxy-diagram](assets/haprxoy-load-balancing-diagram.png) | 
+|:--:| 
+| *A simple point of view on what is Load Balance* |
+
+---
+
+### Architecture
+
+| ![ha-proxy-arch](assets/ha-proxy-lb-setup.jpeg) | 
+|:--:| 
+| *HA-Proxy + KeepAlived* |
+
+---
+
+### Algorithms
 
 **HAProxy** has load balancing algorithms, below I will talk a little bit about them. So, you can define many strategies to balance your workload:
 
@@ -210,6 +233,50 @@ backend back-nginxes
 
 ```
 
+### HTTPS (TLS)
+
+You can use the [**CertBot (by Lets Encrypt)**](https://certbot.eff.org/instructions?ws=haproxy&os=ubuntufocal) and follow the steps given by them.
+
+> Note: Change the Operation System according what you are using.
+
+#### Usage Example
+
+```ini
+...
+frontend front-nginxes
+  bind *:80
+  bind *:443 ssl crt /etc/haproxy/certs/nginx.pem
+  option forwardfor
+  default_backend back-nginxes
+```
+
+Other configurations:
+
+- To ensure requests are HTTPS, use:
+  ```ini
+  ...
+    redirect scheme https if !{ ssl_fc }
+  ```
+- To restrict the use of TLS versions **(ssl-min-ver / ssl-max-ver)**, use:
+  ```ini
+  ...
+  frontend front-nginxes
+    bind *:443 ssl crt /etc/ssl/certs/nginx.pem ssl-min-ver TLSv1.1 ssl-max-ver TLSv1.3
+    default_backend back-nginxes
+  ```
+- To force the use of specific TLS version (TLS1.2), use:
+  ```ini
+  ...
+  frontend front-nginxes
+    bind *:443 ssl crt /etc/ssl/certs/nginx.pem force-tlsv12
+    default_backend back-nginxes
+  ```
+- Global SSL rules (all backends):
+  ```ini
+  global
+    ssl-default-bind-options ssl-min-ver TLSv1.1 ssl-max-ver TLSv1.3
+  ```
+
 ---
 
 # Troubleshooting & Tip Sessions
@@ -219,3 +286,7 @@ backend back-nginxes
 1. DHCP:
    1. To release the current IP address: `dhclient -r`
    1. To obtain a fresh lease: `dhclient`
+1. Testing the SSL connections:
+   ```shell
+   openssl s_client -tls1_1 -connect <ip>:<port> -debug -msg
+   ```
