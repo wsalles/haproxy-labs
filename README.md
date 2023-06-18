@@ -120,11 +120,25 @@ You can customize your [**haproxy.cfg**](vagrantfiles/haproxy/haproxy.cfg) using
 
 Let's see some examples below.
 
+---
+
 ### ACL
 
-You can check the [ACL documentation](https://cbonte.github.io/haproxy-dconv/2.3/configuration.html#7) written by HAProxy team.
+ACL is used for decision-making, it uses conditionals to return **TRUE** or **FALSE** and based on the result of ACL, we can make a decision.
 
-#### List with some Use Cases
+You can check the [**ACL documentation**](https://cbonte.github.io/haproxy-dconv/2.3/configuration.html#7) written by HAProxy team.
+
+#### Usage Examples
+
+- Declaration:
+  ```
+  acl is_private_network src 172.10.10.0/24
+  ```
+- Explanation:
+  | Declare | ACL name           | Method (fetching sample) | Compare values |
+  | ------- | ------------------ | ------------------------ | -------------- |
+  | acl     | is_private_network | src                      | 172.10.10.0/24 |
+#### Use Cases
 
 - PATH
 
@@ -138,6 +152,63 @@ You can check the [ACL documentation](https://cbonte.github.io/haproxy-dconv/2.3
   | `acl is_gt_4 path_len gt 4` | If the number of difits in the path is greater than 4 |
   | `acl is_image_regex pathreg (png|jpg|jpeg|gif)$` | Just using RegEx |
   | `acl is_substring path_sub -i posts` | If contains a string as `posts` |
+
+- PARAMETER
+  | Line | Explanation |
+  | ---- | ----------- |
+  | `acl is_region_rj url_param(region) -i -m str rio rj` | Compare if the Region parameter exists with value "rio" |
+
+- HEADER
+  | Line | Explanation |
+  | ---- | ----------- |
+  | `acl is_header_region_rj req.hdr(Region) -i -m str rio rj` | Compare if the Region header exists with value "rio" |
+  | `acl is_my_old_domain req.hdr(Host) -i -m str old.domain.net` | Compare if the request with Host header is equals "old.domain.net" |
+
+---
+
+### Control-Cache
+
+If the application doesn't have a shared **Session management** using Redis or MemCached for example, we end up being dependent on the session **Stickiness** feature.
+
+#### Cookies
+
+With **Cookies** it's possible to keep the client session for a backend for a while (until the session lasts).
+
+##### Usage Example:
+
+```ini
+defaults
+  option redispatch
+
+...
+backend back-nginxes
+  cookie BACKENDUSED insert indirect nocache
+  option httpchk HEAD /
+  server nginx1 172.10.10.101:80 check cookie nginx1
+  server nginx2 172.10.10.102:80 check cookie nginx2
+  server nginx3 172.10.10.103:80 check cookie nginx3
+
+```
+
+#### Stick Tables
+
+**Sticky Session** works great in L7 load balancing, however if you want to assign a client on a server using L4 load balancing, you will need to use another feature as there is no cookie.
+
+A great feature is the use of **Stick Tables**. With this it is possible to create a key-value data table. Based on this table, we can make decisions.
+
+##### Usage Example:
+```ini
+...
+backend back-nginxes
+  option httpchk HEAD /
+  server nginx1 172.10.10.101:80 check
+  server nginx2 172.10.10.102:80 check
+  server nginx3 172.10.10.103:80 check
+  stick-table type ip size 1m expire 30m
+  stick match src
+  stick store-request src
+
+```
 
 ---
 
