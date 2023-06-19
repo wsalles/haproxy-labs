@@ -8,3 +8,7 @@ sudo add-apt-repository ppa:vbernat/haproxy-${HAPROXY_RELEASE} -y
 
 # Install all packages
 sudo apt install libssl-dev keepalived haproxy -y
+
+# Enable the services
+sudo systemctl enable haproxy
+sudo systemctl enable keepalived

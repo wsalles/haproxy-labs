@@ -1,16 +1,13 @@
 #!/bin/bash
 sudo mkdir -p /etc/haproxy
 sudo mkdir -p /var/lib/haproxy/dev
-sudo cp /tmp/haproxy.service /usr/lib/systemd/system/haproxy.service
 sudo cp /tmp/haproxy.cfg /etc/haproxy/haproxy.cfg
 sudo touch /etc/default/haproxy
-# sudo groupadd haproxy
-# sudo useradd -g haproxy haproxy
-sudo systemctl daemon-reload
-sudo systemctl enable haproxy
-sudo systemctl restart haproxy
+sudo groupadd haproxy
+sudo useradd -g haproxy haproxy
+
 sudo cat <<- EOF > /etc/rsyslog.d/haproxy.conf
-\$AddUnixListenSocket /dev/log
+\$AddUnixListenSocket /var/lib/haproxy/dev/log
 
 # Send HAProxy messages to a dedicated logfile
 :programname, startswith, "haproxy" {
@@ -19,5 +16,6 @@ sudo cat <<- EOF > /etc/rsyslog.d/haproxy.conf
 }
 
 EOF
+
 sudo systemctl restart rsyslog
 sudo systemctl restart haproxy
