@@ -15,6 +15,32 @@ A simple project to create an architecture with High Availability.
 
 ---
 
+# Summary
+
+- [**How does HA Proxy work?**](#how-does-ha-proxy-work)
+  - [Diagram](#diagram)
+  - [Architecture](#architecture)
+  - [Algorithms](#algorithms)
+- [**How to setup the Virtual Machines**](#how-to-setup-the-virtual-machines)
+- [**How to setup HA Proxy**](#how-to-setup-ha-proxy)
+  - [ACL](#acl)
+  - [Control-Cache](#control-cache)
+    - [cookies](#cookies)
+    - [stick-tables](#stick-tables)
+  - [HTTPS (TLS)](#https-tls)
+  - [Security](#security)
+    - [user list](#user-list)
+    - [chroot](#chroot)
+    - [tcp connection limit](#tcp-connection-limit)
+    - [slowloris](#slowloris)
+    - [hardening](#hardening)
+  - [HA-Proxy via Socket](#ha-proxy-via-socket)
+- [**How to setup KeepAlived**](#how-to-setup-keepalived)
+- [**Troubleshooting & Tip Sessions**](#troubleshooting--tip-sessions)
+- [**Credits and Special Thanks** :heart:](#credits-and-special-thanks)
+
+---
+
 # How does HA Proxy work?
 
 [**HAProxy**](https://www.haproxy.org/) is a free, very fast and reliable Reverse-Proxy offering High Availability, Load Balancing, and proxying for TCP and HTTP-based applications.
@@ -97,6 +123,8 @@ A simple project to create an architecture with High Availability.
       server nginx3 172.10.10.103:80 maxconn 5
   ```
 
+[⇪ back to top](#sumary)
+
 ---
 # How to setup the Virtual Machines
 
@@ -133,6 +161,8 @@ A simple project to create an architecture with High Availability.
    172.10.10.201 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
    172.10.10.202 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
    ```
+
+[⇪ back to top](#sumary)
 
 ---
 
@@ -186,6 +216,8 @@ You can check the [**ACL documentation**](https://cbonte.github.io/haproxy-dconv
   | `acl is_header_region_rj req.hdr(Region) -i -m str rio rj` | Compare if the Region header exists with value "rio" |
   | `acl is_my_old_domain req.hdr(Host) -i -m str old.domain.net` | Compare if the request with Host header is equals "old.domain.net" |
 
+[⇪ back to top](#sumary)
+
 ---
 
 ## Control-Cache
@@ -231,6 +263,8 @@ backend back-nginxes
     stick store-request src
 
 ```
+
+[⇪ back to top](#sumary)
 
 ---
 
@@ -278,6 +312,8 @@ Other configurations:
   global
       ssl-default-bind-options ssl-min-ver TLSv1.1 ssl-max-ver TLSv1.3
   ```
+
+[⇪ back to top](#sumary)
 
 ---
 
@@ -412,6 +448,8 @@ If any of the ACL rules are true (*with the exception of the internal network*),
       default_backend all-nginxes
   ```
 
+[⇪ back to top](#sumary)
+
 ---
 
 ## HA-Proxy via Socket
@@ -446,9 +484,11 @@ We can make requests to our HA-Proxy via Socket. The advantages for example, is 
   $ echo "clear table front-nginxes key 172.10.10.201" | sudo socat stdio /var/lib/haproxy/stats
   ```
 
+[⇪ back to top](#sumary)
+
 ---
 
-## How to setup KeepAlived
+# How to setup KeepAlived
 
 You can customize your [**keepalived.conf**](vagrantfiles/haproxy/keepalived_master.conf) if you want.
 
@@ -479,6 +519,8 @@ Let's see the default configuration:
   | advert_int        | (requires) How many seconds an advertising package will be sent on the network |
   | virtual_ipaddress | (requires) Virtual IP that will be created along with the netmask |
 
+[⇪ back to top](#sumary)
+
 ---
 
 # Troubleshooting & Tip Sessions
@@ -505,3 +547,26 @@ Let's see the default configuration:
    pip install slowloris
    slowloris <ip> --port <port> -s 20 --sleeptime 5 -v
    ```
+
+[⇪ back to top](#sumary)
+
+---
+
+# Credits and Special Thanks
+
+## :tv: Course
+- [Udemy: Created by Mateus Müller](https://www.udemy.com/course/haproxy-keepalived-alta-disponibilidade-para-linux/)
+
+## :books: Docs and Articles
+- [HAProxy docs](http://docs.haproxy.org/)
+- [How to install HAProxy on Ubuntu 20.04](https://www.linuxtechi.com/how-to-install-haproxy-ubuntu-20-04/)
+- [Configure Highly Available HAProxy with Keepalived on Ubuntu](https://kifarunix.com/configure-highly-available-haproxy-with-keepalived-on-ubuntu/)
+
+## :hammer_and_wrench: Extra Tools
+
+- [k6](https://k6.io/)
+- [Slowloris](https://github.com/gkbrk/slowloris)
+
+---
+
+[⇪ back to top](#sumary)
