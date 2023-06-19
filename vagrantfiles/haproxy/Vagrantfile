@@ -9,7 +9,7 @@ BOX_NAME    = "starboard/ubuntu-arm64-20.04.5" # ARM64 Box for Apple M1/M2 users
 BOX_VERSION = "20221120.20.40.0"
 
 nodes = {
-  numbers: 1,
+  numbers: 2,
   hostname_prefix: "ubuntu-haproxy-",
   cpu: 1,
   mem: 512,
@@ -30,9 +30,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       haproxy.ssh.insert_key = false
       haproxy.ssh.private_key_path = ['~/.vagrant.d/insecure_private_key', '~/.ssh/id_rsa']
       haproxy.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~/.ssh/authorized_keys"
-      haproxy.vm.provision "file", source: "#{nodes[:src_code]}/haproxy.service", destination: "/tmp/haproxy.service"
       haproxy.vm.provision "file", source: "#{nodes[:src_code]}/haproxy.cfg", destination: "/tmp/haproxy.cfg"
-      haproxy.vm.provision "file", source: "#{nodes[:src_code]}/keepalived.conf", destination: "/tmp/keepalived.conf"
+      if i == 1
+        haproxy.vm.provision "file", source: "#{nodes[:src_code]}/keepalived_master.conf", destination: "/tmp/keepalived.conf"
+      end
+      if i == 2
+        haproxy.vm.provision "file", source: "#{nodes[:src_code]}/keepalived_backup.conf", destination: "/tmp/keepalived.conf"
+      end
       haproxy.vm.provision "shell", path: "#{nodes[:src_code]}/disable-selinux.sh"
       haproxy.vm.provision "shell", path: "#{nodes[:src_code]}/before_script.sh"
       haproxy.vm.provision "shell", path: "#{nodes[:src_code]}/keepalived.sh"

@@ -311,40 +311,36 @@ frontend front-nginxes
 Let's see some usage cases (step-by-step):
 
 - Shell
-
-```shell
-sudo groupadd haproxy
-sudo useradd haproxy -g haproxy
-sudo mkdir -p /var/lib/haproxy/dev
-```
+  ```shell
+  sudo groupadd haproxy
+  sudo useradd haproxy -g haproxy
+  sudo mkdir -p /var/lib/haproxy/dev
+  ```
 
 - **/etc/haproxy/haproxy.cfg**:
-
-```ini
-global
-    log    /dev/log         local0
-    chroot /var/lib/haproxy
-    user   haproxy
-    group  haproxy
-```
+  ```ini
+  global
+      log    /dev/log         local0
+      chroot /var/lib/haproxy
+      user   haproxy
+      group  haproxy
+  ```
 
 - **/etc/rsyslog.d/haproxy.cfg**:
-
-```ini
-$AddUnixListenSocket /var/lib/haproxy/dev/log
- 
-:programname, startswith, "haproxy" { 
-  /var/log/haproxy.log 
-  stop 
-}
-```
+  ```ini
+  $AddUnixListenSocket /var/lib/haproxy/dev/log
+   
+  :programname, startswith, "haproxy" { 
+    /var/log/haproxy.log 
+    stop 
+  }
+  ```
 
 - Restarting the services:
-
-```shell
-sudo systemctl restart rsyslog
-sudo systemctl restart haproxy
-```
+  ```shell
+  sudo systemctl restart rsyslog
+  sudo systemctl restart haproxy
+  ```
 
 ### TCP connection limit
 
@@ -391,29 +387,97 @@ In the example below, let's do:
 
 If any of the ACL rules are true (*with the exception of the internal network*), the source IP address will be banned for 2 minutes (*according to the Stick-Table storage time*).
 
-```ini
-...
-frontend front-nginxes
-  bind *:80
-  bind *:443 ssl crt /etc/haproxy/certs/nginx.pem
-  option forwardfor
-  stick-table type ip size 100k expire 2m store conn_cur,conn_rate(3s),bytes_out_rate(60s),gpc0
-  acl is_internal_network src 172.10.10.0/24
-  acl too_many_tcp_conn src_conn_cur ge 10
-  acl too_many_conn src_conn_rate ge 60
-  acl is_download_limit src_bytes_out_rate gt 10485760
-  acl flag_as_abuser sc0_inc_gpc0 gt 0
-  acl is_abuser src_get_gpc0 gt 0
-  http-request track-sc0 src
-  http-request allow if is_internal_network
-  http-request silent-drop if is_abuser
-  http-request deny if too_many_tcp_conn flag_as_abuser
-  http-request deny if too_many_conn flag_as_abuser
-  http-request deny if is_download_limit flag_as_abuser
-  
-  redirect scheme https if !{ ssl_fc }
-  default_backend all-nginxes
-```
+- **/etc/haproxy/haproxy.cfg**:
+  ```ini
+  ...
+  frontend front-nginxes
+      bind *:80
+      bind *:443 ssl crt /etc/haproxy/certs/nginx.pem
+      option forwardfor
+      stick-table type ip size 100k expire 2m store conn_cur,conn_rate(3s),bytes_out_rate(60s),gpc0
+      acl is_internal_network src 172.10.10.0/24
+      acl too_many_tcp_conn src_conn_cur ge 10
+      acl too_many_conn src_conn_rate ge 60
+      acl is_download_limit src_bytes_out_rate gt 10485760
+      acl flag_as_abuser sc0_inc_gpc0 gt 0
+      acl is_abuser src_get_gpc0 gt 0
+      http-request track-sc0 src
+      http-request allow if is_internal_network
+      http-request silent-drop if is_abuser
+      http-request deny if too_many_tcp_conn flag_as_abuser
+      http-request deny if too_many_conn flag_as_abuser
+      http-request deny if is_download_limit flag_as_abuser
+      
+      redirect scheme https if !{ ssl_fc }
+      default_backend all-nginxes
+  ```
+
+---
+
+## HA-Proxy via Socket
+
+We can make requests to our HA-Proxy via Socket. The advantages for example, is that we can modify the HA-Proxy behavior without needing to restart the process/service, we can show the Stick-Table data and so on.
+
+- **/etc/haproxy/haproxy.cfg**:
+  ```ini
+  global
+      stats socket /var/lib/haproxy/stats level admin
+      ...
+  ```
+
+- Shell (*we need to install:* **socat**):
+  ```shell
+  sudo systemctl restart haproxy
+  sudo yum install socat -y
+  ```
+
+- Some useful commands:
+  ```shell
+  $ echo "help" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "show info" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "enable server back-nginxes/nginx2" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "set server back-nginxes/nginx2 state maint" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "set server back-nginxes/nginx2 state ready" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "set weight back-nginxes/nginx1 200" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "get weight back-nginxes/nginx1" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "show table" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "show table front-nginxes" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "clear table front-nginxes" | sudo socat stdio /var/lib/haproxy/stats
+  $ echo "clear table front-nginxes key 172.10.10.201" | sudo socat stdio /var/lib/haproxy/stats
+  ```
+
+---
+
+## How to setup KeepAlived
+
+You can customize your [**keepalived.conf**](vagrantfiles/haproxy/keepalived_master.conf) if you want.
+
+Let's see the default configuration:
+
+- Usage Example:
+  ```ini
+  vrrp_instance VRRP1 {
+      state MASTER
+      interface eth1
+      virtual_router_id 41
+      priority 200
+      advert_int 1
+      virtual_ipaddress {
+          10.0.0.100/24
+      }
+  }
+  ```
+
+- Explanation:
+  | key               | description                 |
+  | :---------------: | --------------------------- |
+  | vrrp_instance     | (requires) Starts a virtual IP configuration |
+  | state             | (optional) MASTER or BACKUP |
+  | interface         | (requires) Which network interface will you do "advertising" |
+  | virtual_router_id | (requires) Configuration ID from 0 to 255 to identify which "group" |
+  | priority          | (requires) Value that defines who will be the master. E.g: 50,100,150,200 |
+  | advert_int        | (requires) How many seconds an advertising package will be sent on the network |
+  | virtual_ipaddress | (requires) Virtual IP that will be created along with the netmask |
 
 ---
 

@@ -1,11 +1,7 @@
 #!/bin/bash
-sudo mkdir -p /etc/haproxy
-sudo mkdir -p /var/lib/haproxy/dev
-sudo cp /tmp/haproxy.cfg /etc/haproxy/haproxy.cfg
-sudo touch /etc/default/haproxy
-sudo groupadd haproxy
-sudo useradd -g haproxy haproxy
 
+# rsyslog
+sudo mkdir -p /var/lib/haproxy/dev
 sudo cat <<- EOF > /etc/rsyslog.d/haproxy.conf
 \$AddUnixListenSocket /var/lib/haproxy/dev/log
 
@@ -17,5 +13,10 @@ sudo cat <<- EOF > /etc/rsyslog.d/haproxy.conf
 
 EOF
 
+# HA-Proxy setup
+sudo mkdir -p /etc/haproxy/
+sudo cp /tmp/haproxy.cfg /etc/haproxy/haproxy.cfg
+
+# Applying the new configuration
 sudo systemctl restart rsyslog
 sudo systemctl restart haproxy
